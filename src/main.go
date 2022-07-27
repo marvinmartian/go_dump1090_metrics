@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -103,8 +104,17 @@ var (
 )
 
 func aircraftMetrics(aircraft []Aircraft) {
+
+	dump1090AltBaro.Reset()
+	dump1090AltGeom.Reset()
+	dump1090BaroRate.Reset()
+	dump1090GroundSpeed.Reset()
+	dump1090NavHeading.Reset()
+	dump1090Rssi.Reset()
+	dump1090Messages.Reset()
+
 	for _, s := range aircraft {
-		labels := prometheus.Labels{"flight": s.Flight, "hex": s.Hex}
+		labels := prometheus.Labels{"flight": strings.TrimSpace(s.Flight), "hex": s.Hex}
 		dump1090AltBaro.With(labels).Set(float64(s.AltoBaro))
 		dump1090AltGeom.With(labels).Set(float64(s.AltoGeom))
 		dump1090BaroRate.With(labels).Set(float64(s.BaroRate))
@@ -135,13 +145,6 @@ func readAircraftFile(path string) {
 	// Initialize list of aircraft
 	var aircraft_list AircraftList
 
-	// s := fmt.Sprintf(`requests_total{file=%q}`, "aircraft")
-	// metrics.GetOrCreateCounter(s).Inc()
-
-	// metrics.GetOrCreateGauge(`dump1090_gs`, func() float64 {
-	// 	return float64(aircraft_list.Aircraft[len(aircraft_list.Aircraft)-1].GroundSpeed)
-	// })
-
 	// Unmarshal to aircraft list
 	json.Unmarshal(byteValue, &aircraft_list)
 
@@ -168,11 +171,6 @@ func readStatsFile(path string) {
 	// Initialize list of aircraft
 	var stats Statistics
 
-	// var metricsValue uint64
-	// metricsValue = 10
-	// metricsName := fmt.Sprintf("foo=%q", "bar")
-	// metrics.GetOrCreateCounter(metricsName).Set(metricsValue)
-
 	// Unmarshal to aircraft list
 	json.Unmarshal(byteValue, &stats)
 
@@ -190,6 +188,7 @@ func readFiles(path string) {
 }
 
 func init() {
+	// reg := prometheus.NewRegistry()
 	// Metrics have to be registered to be exposed:
 	prometheus.MustRegister(dump1090AltBaro)
 	prometheus.MustRegister(dump1090AltGeom)
