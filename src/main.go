@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cabify/gotoprom"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -30,8 +31,66 @@ type Statistics struct {
 }
 
 type SingleStat struct {
-	Start float32 `json:"start"`
-	End   float32 `json:"end"`
+	Start    float32    `json:"start"`
+	End      float32    `json:"end"`
+	Messages int32      `json:"messages"`
+	Local    StatLocal  `json:"local"`
+	Cpr      StatCpr    `json:"cpr"`
+	Cpu      StatCpu    `json:"cpu"`
+	Remote   StatRemote `json:"remote"`
+	Track    StatTrack  `json:"tracks"`
+}
+
+type StatLocal struct {
+	Accepted         []float32 `json:"accepted"`
+	Bad              float32   `json:"bad"`
+	ModeAc           float32   `json:"modeac"`
+	Modes            float32   `json:"modes"`
+	Noise            float32   `json:"noise"`
+	PeakSignal       float32   `json:"peak_signal"`
+	SamplesDropped   float32   `json:"samples_dropped"`
+	SamplesProcessed float32   `json:"samples_processed"`
+	SignalStrength   float32   `json:"signal"`
+	StrongSignals    float32   `json:"strong_signals"`
+	UnknownIcao      float32   `json:"unknown_icao"`
+}
+
+type StatRemote struct {
+	Accepted    []float32 `json:"accepted"`
+	Bad         float32   `json:"bad"`
+	ModeAc      float32   `json:"modeac"`
+	Modes       float32   `json:"modes"`
+	UnknownIcao float32   `json:"unknown_icao"`
+}
+
+type StatCpu struct {
+	Demod      float32 `json:"demod"`
+	Reader     float32 `json:"reader"`
+	Background float32 `json:"background"`
+}
+
+type StatTrack struct {
+	All           float32 `json:"all"`
+	SingleMessage float32 `json:"single_message"`
+}
+
+type StatCpr struct {
+	Airborne      float32 `json:"airborne"`
+	Filtered      float32 `json:"filtered"`
+	GlobalBad     float32 `json:"global_bad"`
+	GlobalOk      float32 `json:"global_ok"`
+	GlobalRange   float32 `json:"global_range"`
+	GlobalSkipped float32 `json:"global_skipped"`
+	GlobalSpeed   float32 `json:"global_speed"`
+
+	LocalOk               float32 `json:"local_ok"`
+	LocalAircraftRelative float32 `json:"local_aircraft_relative"`
+	LocalReceiverRelative float32 `json:"local_receiver_relative"`
+	LocalSkipped          float32 `json:"local_skipped"`
+	LocalRange            float32 `json:"local_range"`
+	LocalSpeed            float32 `json:"local_speed"`
+
+	Surface float32 `json:"surface"`
 }
 
 type Aircraft struct {
@@ -103,6 +162,23 @@ var (
 	)
 )
 
+var metrics struct {
+	// SomeCounter                      func() prometheus.Counter   `name:"some_counter" help:"some counter"`
+	// SomeHistogram                    func() prometheus.Histogram `name:"some_histogram" help:"Some histogram with default prometheus buckets" buckets:""`
+	// SomeHistogramWithSpecificBuckets func() prometheus.Histogram `name:"some_histogram_with_buckets" help:"Some histogram with custom buckets" buckets:".01,.05,.1"`
+	SomeGauge func(requestLabels) prometheus.Gauge `name:"some_gauge" help:"Some gauge"`
+	// SomeSummaryWithSpecificMaxAge    func() prometheus.Summary   `name:"some_summary_with_specific_max_age" help:"Some summary with custom max age" max_age:"20m" objectives:"0.50,0.95,0.99"`
+
+	// Requests struct {
+	// 	Total func(requestLabels) prometheus.Count `name:"total" help:"Total amount of requests served"`
+	// } `namespace:"requests"`
+}
+
+type requestLabels struct {
+	Flight string `label:"flight"`
+	Hex    string `label:"hex"`
+}
+
 func aircraftMetrics(aircraft []Aircraft) {
 
 	dump1090AltBaro.Reset()
@@ -157,6 +233,8 @@ func readStatsFile(path string) {
 	// Open the file
 	jsonFile, err := os.Open(path + "stats.json")
 
+	metrics.SomeGauge(requestLabels{Flight: "Foo", Hex: "Bar"}).Set(100)
+
 	// Print the error if that happens.
 	if err != nil {
 		fmt.Println(err)
@@ -175,6 +253,7 @@ func readStatsFile(path string) {
 	json.Unmarshal(byteValue, &stats)
 
 	fmt.Printf("%+v\n", stats)
+	fmt.Println("-------------")
 }
 
 func readFiles(path string) {
@@ -182,13 +261,14 @@ func readFiles(path string) {
 
 	for _ = range ticker.C {
 		readAircraftFile(path)
-		// readStatsFile(path)
+		readStatsFile(path)
 	}
 
 }
 
 func init() {
 	// reg := prometheus.NewRegistry()
+	gotoprom.MustInit(&metrics, "dump1090")
 	// Metrics have to be registered to be exposed:
 	prometheus.MustRegister(dump1090AltBaro)
 	prometheus.MustRegister(dump1090AltGeom)
