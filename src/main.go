@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strings"
@@ -108,6 +109,15 @@ type Aircraft struct {
 	Emergency   string  `json:"emergency,omitempty"`
 	Messages    float64 `json:"messages,omitempty"`
 }
+type Coordinate struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
+
+var (
+	ReceiverLat float64
+	ReceiverLon float64
+)
 
 // Define the aircraft metrics
 var (
@@ -160,6 +170,13 @@ var (
 	},
 		[]string{"flight", "hex"},
 	)
+	dump1090Distance = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "dump1090",
+		Name:      "distance",
+		Help:      "Distance from receiver.",
+	},
+		[]string{"flight", "hex"},
+	)
 )
 
 var metrics struct {
@@ -179,9 +196,37 @@ type requestLabels struct {
 	Hex    string `label:"hex"`
 }
 
+func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64, unit ...string) float64 {
+	radlat1 := float64(math.Pi * lat1 / 180)
+	radlat2 := float64(math.Pi * lat2 / 180)
+
+	theta := float64(lng1 - lng2)
+	radtheta := float64(math.Pi * theta / 180)
+
+	dist := math.Sin(radlat1)*math.Sin(radlat2) + math.Cos(radlat1)*math.Cos(radlat2)*math.Cos(radtheta)
+	if dist > 1 {
+		dist = 1
+	}
+
+	dist = math.Acos(dist)
+	dist = dist * 180 / math.Pi
+	dist = dist * 60 * 1.1515
+
+	if len(unit) > 0 {
+		if unit[0] == "K" {
+			dist = dist * 1.609344
+		} else if unit[0] == "N" {
+			dist = dist * 0.8684
+		}
+	}
+
+	return dist
+}
+
 func aircraftMetrics(aircraft []Aircraft) {
 
 	dump1090AltBaro.Reset()
+	dump1090Distance.Reset()
 	dump1090AltGeom.Reset()
 	dump1090BaroRate.Reset()
 	dump1090GroundSpeed.Reset()
@@ -191,6 +236,11 @@ func aircraftMetrics(aircraft []Aircraft) {
 
 	for _, s := range aircraft {
 		labels := prometheus.Labels{"flight": strings.TrimSpace(s.Flight), "hex": s.Hex}
+		if s.Latitude != 0 {
+			dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude, "K")
+			dump1090Distance.With(labels).Set(dist)
+		}
+
 		dump1090AltBaro.With(labels).Set(float64(s.AltoBaro))
 		dump1090AltGeom.With(labels).Set(float64(s.AltoGeom))
 		dump1090BaroRate.With(labels).Set(float64(s.BaroRate))
@@ -256,10 +306,39 @@ func readStatsFile(path string) {
 	fmt.Println("-------------")
 }
 
+func readReceiverInfo(path string) {
+
+	// Open the file
+	jsonFile, err := os.Open(path + "receiver.json")
+
+	// Print the error if that happens.
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// defer file close
+	defer jsonFile.Close()
+
+	// read file
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	// // Initialize list of coordinates
+	var cords Coordinate
+
+	// // Unmarshal to aircraft list
+	json.Unmarshal(byteValue, &cords)
+
+	ReceiverLat = cords.Lat
+	ReceiverLon = cords.Lon
+
+	// fmt.Printf("%+v\n", cords)
+
+}
+
 func readFiles(path string) {
 	ticker := time.NewTicker(5 * time.Second)
 
-	for _ = range ticker.C {
+	for range ticker.C {
 		readAircraftFile(path)
 		readStatsFile(path)
 	}
@@ -277,6 +356,7 @@ func init() {
 	prometheus.MustRegister(dump1090NavHeading)
 	prometheus.MustRegister(dump1090Rssi)
 	prometheus.MustRegister(dump1090Messages)
+	prometheus.MustRegister(dump1090Distance)
 }
 
 func main() {
@@ -287,6 +367,7 @@ func main() {
 	fmt.Println("Path to json files:", *path)
 	fmt.Println("Listen Port:", *port)
 
+	readReceiverInfo(*path)
 	go readFiles(*path)
 
 	http.Handle("/metrics", promhttp.Handler())
