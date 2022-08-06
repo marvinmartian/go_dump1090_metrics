@@ -288,68 +288,64 @@ func statMetrics(stats Statistics) {
 		metrics.CprSurface(minuteLabel).Set(value.Cpr.Surface)
 	}
 
-	// lastMinuteLabel := statLabels{
-	// 	TimePeriod: "last1min",
-	// }
-	// metrics.CprAirborne(lastMinuteLabel).Set(stats.Last_1.Cpr.Airborne)
-	// metrics.CprFiltered(lastMinuteLabel).Set(stats.Last_1.Cpr.Filtered)
-	// metrics.CprGlobalBad(lastMinuteLabel).Set(stats.Last_1.Cpr.GlobalBad)
-	// metrics.CprGlobalOk(lastMinuteLabel).Set(stats.Last_1.Cpr.GlobalOk)
-	// metrics.CprGlobalRange(lastMinuteLabel).Set(stats.Last_1.Cpr.GlobalRange)
 }
 
-func readAircraftFile(path string) {
+func readAircraftFile(path string, ticker *time.Ticker) {
 
-	// Open the file
-	jsonFile, err := os.Open(path + "aircraft.json")
+	for range ticker.C {
+		// Open the file
+		jsonFile, err := os.Open(path + "aircraft.json")
 
-	// Print the error if that happens.
-	if err != nil {
-		fmt.Println(err)
+		// Print the error if that happens.
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// defer file close
+		defer jsonFile.Close()
+
+		// read file
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		// Initialize list of aircraft
+		var aircraft_list AircraftList
+
+		// Unmarshal to aircraft list
+		json.Unmarshal(byteValue, &aircraft_list)
+
+		aircraftMetrics(aircraft_list.Aircraft)
 	}
-
-	// defer file close
-	defer jsonFile.Close()
-
-	// read file
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	// Initialize list of aircraft
-	var aircraft_list AircraftList
-
-	// Unmarshal to aircraft list
-	json.Unmarshal(byteValue, &aircraft_list)
-
-	aircraftMetrics(aircraft_list.Aircraft)
 	// fmt.Printf("%+v\n", aircraft_list)
 }
 
-func readStatsFile(path string) {
+func readStatsFile(path string, ticker *time.Ticker) {
 
-	// Open the file
-	jsonFile, err := os.Open(path + "stats.json")
+	for range ticker.C {
+		// Open the file
+		jsonFile, err := os.Open(path + "stats.json")
 
-	// Print the error if that happens.
-	if err != nil {
-		fmt.Println(err)
+		fmt.Println("stats file")
+
+		// Print the error if that happens.
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// defer file close
+		defer jsonFile.Close()
+
+		// read file
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		// Initialize list of aircraft
+		var stats Statistics
+
+		// Unmarshal to aircraft list
+		json.Unmarshal(byteValue, &stats)
+
+		statMetrics(stats)
 	}
 
-	// defer file close
-	defer jsonFile.Close()
-
-	// read file
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	// Initialize list of aircraft
-	var stats Statistics
-
-	// Unmarshal to aircraft list
-	json.Unmarshal(byteValue, &stats)
-
-	statMetrics(stats)
-
-	// fmt.Printf("%+v\n", stats)
-	// fmt.Println("-------------")
 }
 
 func readReceiverInfo(path string) {
@@ -377,29 +373,22 @@ func readReceiverInfo(path string) {
 	ReceiverLat = cords.Lat
 	ReceiverLon = cords.Lon
 
-	// fmt.Printf("%+v\n", cords)
-
 }
 
-func readFiles(path string) {
-	ticker := time.NewTicker(5 * time.Second)
+func readFilesTicker(path string) {
 
-	for range ticker.C {
-		readAircraftFile(path)
-		readStatsFile(path)
-	}
+	aircraftTicker := time.NewTicker(5 * time.Second)
+	statsTicker := time.NewTicker(30 * time.Minute)
+
+	go readAircraftFile(path, aircraftTicker)
+	go readStatsFile(path, statsTicker)
 
 }
-
-// func metricsMap() map[string]string {
-// 	m := make(map[string]string)
-// 	fmt.Println(m)
-// 	return m
-// }
 
 func init() {
 	// reg := prometheus.NewRegistry()
 	gotoprom.MustInit(&metrics, "dump1090")
+
 	// Metrics have to be registered to be exposed:
 	prometheus.MustRegister(dump1090AltBaro)
 	prometheus.MustRegister(dump1090AltGeom)
@@ -419,11 +408,9 @@ func main() {
 	fmt.Println("Path to json files:", *path)
 	fmt.Println("Listen Port:", *port)
 
-	// foo := metricsMap()
-	// fmt.Println(foo)
-
 	readReceiverInfo(*path)
-	go readFiles(*path)
+
+	go readFilesTicker(*path)
 
 	http.Handle("/metrics", promhttp.Handler())
 	log.Fatal(http.ListenAndServe(":"+*port, nil))
