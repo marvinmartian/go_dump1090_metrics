@@ -32,9 +32,9 @@ type Statistics struct {
 }
 
 type SingleStat struct {
-	Start    float32    `json:"start"`
-	End      float32    `json:"end"`
-	Messages int32      `json:"messages"`
+	Start    float64    `json:"start"`
+	End      float64    `json:"end"`
+	Messages int64      `json:"messages"`
 	Local    StatLocal  `json:"local"`
 	Cpr      StatCpr    `json:"cpr"`
 	Cpu      StatCpu    `json:"cpu"`
@@ -43,55 +43,55 @@ type SingleStat struct {
 }
 
 type StatLocal struct {
-	Accepted         []float32 `json:"accepted"`
-	Bad              float32   `json:"bad"`
-	ModeAc           float32   `json:"modeac"`
-	Modes            float32   `json:"modes"`
-	Noise            float32   `json:"noise"`
-	PeakSignal       float32   `json:"peak_signal"`
-	SamplesDropped   float32   `json:"samples_dropped"`
-	SamplesProcessed float32   `json:"samples_processed"`
-	SignalStrength   float32   `json:"signal"`
-	StrongSignals    float32   `json:"strong_signals"`
-	UnknownIcao      float32   `json:"unknown_icao"`
+	Accepted         []float64 `json:"accepted"`
+	Bad              float64   `json:"bad"`
+	ModeAc           float64   `json:"modeac"`
+	Modes            float64   `json:"modes"`
+	Noise            float64   `json:"noise"`
+	PeakSignal       float64   `json:"peak_signal"`
+	SamplesDropped   float64   `json:"samples_dropped"`
+	SamplesProcessed float64   `json:"samples_processed"`
+	SignalStrength   float64   `json:"signal"`
+	StrongSignals    float64   `json:"strong_signals"`
+	UnknownIcao      float64   `json:"unknown_icao"`
 }
 
 type StatRemote struct {
-	Accepted    []float32 `json:"accepted"`
-	Bad         float32   `json:"bad"`
-	ModeAc      float32   `json:"modeac"`
-	Modes       float32   `json:"modes"`
-	UnknownIcao float32   `json:"unknown_icao"`
+	Accepted    []float64 `json:"accepted"`
+	Bad         float64   `json:"bad"`
+	ModeAc      float64   `json:"modeac"`
+	Modes       float64   `json:"modes"`
+	UnknownIcao float64   `json:"unknown_icao"`
 }
 
 type StatCpu struct {
-	Demod      float32 `json:"demod"`
-	Reader     float32 `json:"reader"`
-	Background float32 `json:"background"`
+	Demod      float64 `json:"demod"`
+	Reader     float64 `json:"reader"`
+	Background float64 `json:"background"`
 }
 
 type StatTrack struct {
-	All           float32 `json:"all"`
-	SingleMessage float32 `json:"single_message"`
+	All           float64 `json:"all"`
+	SingleMessage float64 `json:"single_message"`
 }
 
 type StatCpr struct {
-	Airborne      float32 `json:"airborne"`
-	Filtered      float32 `json:"filtered"`
-	GlobalBad     float32 `json:"global_bad"`
-	GlobalOk      float32 `json:"global_ok"`
-	GlobalRange   float32 `json:"global_range"`
-	GlobalSkipped float32 `json:"global_skipped"`
-	GlobalSpeed   float32 `json:"global_speed"`
+	Airborne      float64 `json:"airborne"`
+	Filtered      float64 `json:"filtered"`
+	GlobalBad     float64 `json:"global_bad"`
+	GlobalOk      float64 `json:"global_ok"`
+	GlobalRange   float64 `json:"global_range"`
+	GlobalSkipped float64 `json:"global_skipped"`
+	GlobalSpeed   float64 `json:"global_speed"`
 
-	LocalOk               float32 `json:"local_ok"`
-	LocalAircraftRelative float32 `json:"local_aircraft_relative"`
-	LocalReceiverRelative float32 `json:"local_receiver_relative"`
-	LocalSkipped          float32 `json:"local_skipped"`
-	LocalRange            float32 `json:"local_range"`
-	LocalSpeed            float32 `json:"local_speed"`
+	LocalOk               float64 `json:"local_ok"`
+	LocalAircraftRelative float64 `json:"local_aircraft_relative"`
+	LocalReceiverRelative float64 `json:"local_receiver_relative"`
+	LocalSkipped          float64 `json:"local_skipped"`
+	LocalRange            float64 `json:"local_range"`
+	LocalSpeed            float64 `json:"local_speed"`
 
-	Surface float32 `json:"surface"`
+	Surface float64 `json:"surface"`
 }
 
 type Aircraft struct {
@@ -180,15 +180,25 @@ var (
 )
 
 var metrics struct {
-	// SomeCounter                      func() prometheus.Counter   `name:"some_counter" help:"some counter"`
-	// SomeHistogram                    func() prometheus.Histogram `name:"some_histogram" help:"Some histogram with default prometheus buckets" buckets:""`
-	// SomeHistogramWithSpecificBuckets func() prometheus.Histogram `name:"some_histogram_with_buckets" help:"Some histogram with custom buckets" buckets:".01,.05,.1"`
-	SomeGauge func(requestLabels) prometheus.Gauge `name:"some_gauge" help:"Some gauge"`
-	// SomeSummaryWithSpecificMaxAge    func() prometheus.Summary   `name:"some_summary_with_specific_max_age" help:"Some summary with custom max age" max_age:"20m" objectives:"0.50,0.95,0.99"`
+	CprAirborne      func(statLabels) prometheus.Gauge `name:"stats_cpr_airborne" help:"cpr airborne"`
+	CprFiltered      func(statLabels) prometheus.Gauge `name:"stats_cpr_filtered" help:"cpr fltered"`
+	CprGlobalBad     func(statLabels) prometheus.Gauge `name:"stats_cpr_global_bad" help:"cpr global bad"`
+	CprGlobalOk      func(statLabels) prometheus.Gauge `name:"stats_cpr_global_ok" help:"cpr global ok"`
+	CprGlobalRange   func(statLabels) prometheus.Gauge `name:"stats_cpr_global_range" help:"cpr global range"`
+	CprGlobalSkipped func(statLabels) prometheus.Gauge `name:"stats_cpr_global_skipped" help:"cpr global skipped"`
+	CprGlobalSpeed   func(statLabels) prometheus.Gauge `name:"stats_cpr_global_speed" help:"cpr global speed"`
 
-	// Requests struct {
-	// 	Total func(requestLabels) prometheus.Count `name:"total" help:"Total amount of requests served"`
-	// } `namespace:"requests"`
+	CprLocalAircraftRelative func(statLabels) prometheus.Gauge `name:"stats_cpr_local_aircraft_relative" help:"cpr local aircraft relative"`
+	CprLocalOk               func(statLabels) prometheus.Gauge `name:"stats_cpr_local_ok" help:"cpr local ok"`
+	CprLocalRange            func(statLabels) prometheus.Gauge `name:"stats_cpr_local_range" help:"cpr local range"`
+	CprLocalReceiverRelative func(statLabels) prometheus.Gauge `name:"stats_cpr_local_receiver_relative" help:"cpr local receiver relative"`
+	CprLocalSkipped          func(statLabels) prometheus.Gauge `name:"stats_cpr_local_skipped" help:"cpr local skipped"`
+	CprLocalSpeed            func(statLabels) prometheus.Gauge `name:"stats_cpr_local_speed" help:"cpr local speed"`
+	CprSurface               func(statLabels) prometheus.Gauge `name:"stats_cpr_surface" help:"cpr surface"`
+}
+
+type statLabels struct {
+	TimePeriod string `label:"time_period"`
 }
 
 type requestLabels struct {
@@ -232,7 +242,7 @@ func aircraftMetrics(aircraft []Aircraft) {
 	dump1090GroundSpeed.Reset()
 	dump1090NavHeading.Reset()
 	dump1090Rssi.Reset()
-	dump1090Messages.Reset()
+	// dump1090Messages.Reset()
 
 	for _, s := range aircraft {
 		labels := prometheus.Labels{"flight": strings.TrimSpace(s.Flight), "hex": s.Hex}
@@ -247,9 +257,45 @@ func aircraftMetrics(aircraft []Aircraft) {
 		dump1090GroundSpeed.With(labels).Set(float64(s.GroundSpeed))
 		dump1090NavHeading.With(labels).Set(float64(s.NavHeading))
 		dump1090Rssi.With(labels).Set(float64(s.RSSi))
-		dump1090Messages.With(labels).Set(float64(s.Messages))
+		// dump1090Messages.With(labels).Set(float64(s.Messages))
 	}
 
+}
+
+func statMetrics(stats Statistics) {
+
+	m := make(map[string]SingleStat)
+	m["last5minute"] = stats.Last_5
+	m["last1minute"] = stats.Last_1
+	m["latest"] = stats.Latest
+	for key, value := range m {
+		minuteLabel := statLabels{
+			TimePeriod: key,
+		}
+
+		metrics.CprAirborne(minuteLabel).Set(value.Cpr.Airborne)
+		metrics.CprFiltered(minuteLabel).Set(value.Cpr.Filtered)
+		metrics.CprGlobalBad(minuteLabel).Set(value.Cpr.GlobalBad)
+		metrics.CprGlobalOk(minuteLabel).Set(value.Cpr.GlobalOk)
+		metrics.CprGlobalRange(minuteLabel).Set(value.Cpr.GlobalRange)
+
+		metrics.CprLocalAircraftRelative(minuteLabel).Set(value.Cpr.LocalAircraftRelative)
+		metrics.CprLocalOk(minuteLabel).Set(value.Cpr.LocalOk)
+		metrics.CprLocalRange(minuteLabel).Set(value.Cpr.LocalRange)
+		metrics.CprLocalReceiverRelative(minuteLabel).Set(value.Cpr.LocalReceiverRelative)
+		metrics.CprLocalSkipped(minuteLabel).Set(value.Cpr.LocalSkipped)
+
+		metrics.CprSurface(minuteLabel).Set(value.Cpr.Surface)
+	}
+
+	// lastMinuteLabel := statLabels{
+	// 	TimePeriod: "last1min",
+	// }
+	// metrics.CprAirborne(lastMinuteLabel).Set(stats.Last_1.Cpr.Airborne)
+	// metrics.CprFiltered(lastMinuteLabel).Set(stats.Last_1.Cpr.Filtered)
+	// metrics.CprGlobalBad(lastMinuteLabel).Set(stats.Last_1.Cpr.GlobalBad)
+	// metrics.CprGlobalOk(lastMinuteLabel).Set(stats.Last_1.Cpr.GlobalOk)
+	// metrics.CprGlobalRange(lastMinuteLabel).Set(stats.Last_1.Cpr.GlobalRange)
 }
 
 func readAircraftFile(path string) {
@@ -283,8 +329,6 @@ func readStatsFile(path string) {
 	// Open the file
 	jsonFile, err := os.Open(path + "stats.json")
 
-	metrics.SomeGauge(requestLabels{Flight: "Foo", Hex: "Bar"}).Set(100)
-
 	// Print the error if that happens.
 	if err != nil {
 		fmt.Println(err)
@@ -302,8 +346,10 @@ func readStatsFile(path string) {
 	// Unmarshal to aircraft list
 	json.Unmarshal(byteValue, &stats)
 
-	fmt.Printf("%+v\n", stats)
-	fmt.Println("-------------")
+	statMetrics(stats)
+
+	// fmt.Printf("%+v\n", stats)
+	// fmt.Println("-------------")
 }
 
 func readReceiverInfo(path string) {
@@ -345,6 +391,12 @@ func readFiles(path string) {
 
 }
 
+// func metricsMap() map[string]string {
+// 	m := make(map[string]string)
+// 	fmt.Println(m)
+// 	return m
+// }
+
 func init() {
 	// reg := prometheus.NewRegistry()
 	gotoprom.MustInit(&metrics, "dump1090")
@@ -366,6 +418,9 @@ func main() {
 	flag.Parse()
 	fmt.Println("Path to json files:", *path)
 	fmt.Println("Listen Port:", *port)
+
+	// foo := metricsMap()
+	// fmt.Println(foo)
 
 	readReceiverInfo(*path)
 	go readFiles(*path)
