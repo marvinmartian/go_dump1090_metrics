@@ -324,8 +324,6 @@ func readStatsFile(path string, ticker *time.Ticker) {
 		// Open the file
 		jsonFile, err := os.Open(path + "stats.json")
 
-		fmt.Println("stats file")
-
 		// Print the error if that happens.
 		if err != nil {
 			fmt.Println(err)
