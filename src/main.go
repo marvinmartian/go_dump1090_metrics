@@ -195,6 +195,10 @@ var metrics struct {
 	CprLocalSkipped          func(statLabels) prometheus.Gauge `name:"stats_cpr_local_skipped" help:"cpr local skipped"`
 	CprLocalSpeed            func(statLabels) prometheus.Gauge `name:"stats_cpr_local_speed" help:"cpr local speed"`
 	CprSurface               func(statLabels) prometheus.Gauge `name:"stats_cpr_surface" help:"cpr surface"`
+
+	CpuBackgroundMs func(statLabels) prometheus.Gauge `name:"stats_cpu_background_milliseconds" help:"background cpu"`
+	CpuDemodMs      func(statLabels) prometheus.Gauge `name:"stats_cpu_demod_milliseconds" help:"Demod ms"`
+	CpuReaderMs     func(statLabels) prometheus.Gauge `name:"stats_cpu_reader_milliseconds" help:"Reader ms"`
 }
 
 type statLabels struct {
@@ -265,7 +269,7 @@ func aircraftMetrics(aircraft []Aircraft) {
 func statMetrics(stats Statistics) {
 
 	m := make(map[string]SingleStat)
-	m["last5minute"] = stats.Last_5
+	// m["last5minute"] = stats.Last_5
 	m["last1minute"] = stats.Last_1
 	m["latest"] = stats.Latest
 	for key, value := range m {
@@ -286,6 +290,10 @@ func statMetrics(stats Statistics) {
 		metrics.CprLocalSkipped(minuteLabel).Set(value.Cpr.LocalSkipped)
 
 		metrics.CprSurface(minuteLabel).Set(value.Cpr.Surface)
+
+		metrics.CpuBackgroundMs(minuteLabel).Set(value.Cpu.Background)
+		metrics.CpuDemodMs(minuteLabel).Set(value.Cpu.Demod)
+		metrics.CpuReaderMs(minuteLabel).Set(value.Cpu.Reader)
 	}
 
 }
@@ -376,7 +384,7 @@ func readReceiverInfo(path string) {
 func readFilesTicker(path string) {
 
 	aircraftTicker := time.NewTicker(5 * time.Second)
-	statsTicker := time.NewTicker(30 * time.Minute)
+	statsTicker := time.NewTicker(30 * time.Second)
 
 	go readAircraftFile(path, aircraftTicker)
 	go readStatsFile(path, statsTicker)
