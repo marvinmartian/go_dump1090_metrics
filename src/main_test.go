@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -24,8 +23,16 @@ func TestRelativeAngle(t *testing.T) {
 	var lon2 float64 = -115.99
 
 	rel_angle := relative_angle(lat1, lon1, lat2, lon2)
-	fmt.Println(rel_angle)
 	if rel_angle != 153.434948822922 {
 		t.Errorf("Angle was incorrect. Expected: 153.434948822922")
+	}
+}
+
+func TestRelativeDirection(t *testing.T) {
+	var angle float64 = 116.4048736325465
+
+	rel_angle := relative_direction(angle)
+	if rel_angle != "SE" {
+		t.Errorf("Direction was incorrect. Expected: SE")
 	}
 }

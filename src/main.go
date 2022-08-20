@@ -216,6 +216,8 @@ type requestLabels struct {
 
 const radius = 6371
 
+var direction_lut = [16]string{"N", "NE", "NE", "E", "E", "SE", "SE", "S", "S", "SW", "SW", "W", "W", "NW", "NW", "N"}
+
 func degrees2radians(degrees float64) float64 {
 	return degrees * math.Pi / 180
 }
@@ -237,6 +239,12 @@ func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 	return d
 }
 
+func relative_direction(angle float64) string {
+	// direction_lut := [16]string{"N", "NE", "NE", "E", "E", "SE", "SE", "S", "S", "SW", "SW", "W", "W", "NW", "NW", "N"}
+	index := int(angle/22.5) + 1
+	return direction_lut[index]
+}
+
 func aircraftMetrics(aircraft []Aircraft) {
 
 	dump1090AltBaro.Reset()
@@ -252,6 +260,10 @@ func aircraftMetrics(aircraft []Aircraft) {
 		labels := prometheus.Labels{"flight": strings.TrimSpace(s.Flight), "hex": s.Hex}
 		if s.Latitude != 0 {
 			dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
+			// angle := relative_angle(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
+			// direction := relative_direction(angle)
+			// fmt.Println(angle)
+			// fmt.Println(direction)
 			dump1090Distance.With(labels).Set(dist)
 		}
 
