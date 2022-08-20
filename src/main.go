@@ -220,7 +220,12 @@ func degrees2radians(degrees float64) float64 {
 	return degrees * math.Pi / 180
 }
 
-func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64, unit ...string) float64 {
+func relative_angle(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
+	angle := math.Atan2(lat2-lat1, lng2-lng1) * (180 / math.Pi)
+	return angle
+}
+
+func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 	degreesLat := degrees2radians(lat2 - lat1)
 	degreesLong := degrees2radians(lng2 - lng1)
 	a := (math.Sin(degreesLat/2)*math.Sin(degreesLat/2) +
@@ -246,7 +251,7 @@ func aircraftMetrics(aircraft []Aircraft) {
 	for _, s := range aircraft {
 		labels := prometheus.Labels{"flight": strings.TrimSpace(s.Flight), "hex": s.Hex}
 		if s.Latitude != 0 {
-			dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude, "K")
+			dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
 			dump1090Distance.With(labels).Set(dist)
 		}
 
