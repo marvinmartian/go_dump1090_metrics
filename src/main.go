@@ -19,7 +19,7 @@ import (
 )
 
 type AircraftList struct {
-	Messages int32      `json:"messages"`
+	Messages float64    `json:"messages"`
 	Aircraft []Aircraft `json:"aircraft"`
 }
 
@@ -34,7 +34,7 @@ type Statistics struct {
 type SingleStat struct {
 	Start    float64    `json:"start"`
 	End      float64    `json:"end"`
-	Messages int64      `json:"messages"`
+	Messages float64    `json:"messages"`
 	Local    StatLocal  `json:"local"`
 	Cpr      StatCpr    `json:"cpr"`
 	Cpu      StatCpu    `json:"cpu"`
@@ -180,6 +180,10 @@ var (
 )
 
 var metrics struct {
+	MessagesTotal func(statLabels) prometheus.Gauge `name:"messages_total" help:"Total number of messages received"`
+
+	RecentAircraftObserved func(statLabels) prometheus.Gauge `name:"recent_aircraft_observed" help:"Recent Aircraft observed"`
+
 	CprAirborne      func(statLabels) prometheus.Gauge `name:"stats_cpr_airborne" help:"cpr airborne"`
 	CprFiltered      func(statLabels) prometheus.Gauge `name:"stats_cpr_filtered" help:"cpr fltered"`
 	CprGlobalBad     func(statLabels) prometheus.Gauge `name:"stats_cpr_global_bad" help:"cpr global bad"`
@@ -270,12 +274,15 @@ func statMetrics(stats Statistics) {
 
 	m := make(map[string]SingleStat)
 	// m["last5minute"] = stats.Last_5
-	m["last1minute"] = stats.Last_1
+	m["last1min"] = stats.Last_1
 	m["latest"] = stats.Latest
+
 	for key, value := range m {
 		minuteLabel := statLabels{
 			TimePeriod: key,
 		}
+
+		metrics.MessagesTotal(minuteLabel).Set(value.Messages)
 
 		metrics.CprAirborne(minuteLabel).Set(value.Cpr.Airborne)
 		metrics.CprFiltered(minuteLabel).Set(value.Cpr.Filtered)
