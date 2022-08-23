@@ -313,59 +313,55 @@ func statMetrics(stats Statistics) {
 
 }
 
-func readAircraftFile(path string, ticker *time.Ticker) {
+func readAircraftFile(path string) {
 
-	for range ticker.C {
-		// Open the file
-		jsonFile, err := os.Open(path + "aircraft.json")
+	// Open the file
+	jsonFile, err := os.Open(path + "aircraft.json")
 
-		// Print the error if that happens.
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		// defer file close
-		defer jsonFile.Close()
-
-		// read file
-		byteValue, _ := ioutil.ReadAll(jsonFile)
-
-		// Initialize list of aircraft
-		var aircraft_list AircraftList
-
-		// Unmarshal to aircraft list
-		json.Unmarshal(byteValue, &aircraft_list)
-
-		aircraftMetrics(aircraft_list.Aircraft)
+	// Print the error if that happens.
+	if err != nil {
+		fmt.Println(err)
 	}
+
+	// defer file close
+	defer jsonFile.Close()
+
+	// read file
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	// Initialize list of aircraft
+	var aircraft_list AircraftList
+
+	// Unmarshal to aircraft list
+	json.Unmarshal(byteValue, &aircraft_list)
+
+	aircraftMetrics(aircraft_list.Aircraft)
 	// fmt.Printf("%+v\n", aircraft_list)
 }
 
-func readStatsFile(path string, ticker *time.Ticker) {
+func readStatsFile(path string) {
 
-	for range ticker.C {
-		// Open the file
-		jsonFile, err := os.Open(path + "stats.json")
+	// Open the file
+	jsonFile, err := os.Open(path + "stats.json")
 
-		// Print the error if that happens.
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		// defer file close
-		defer jsonFile.Close()
-
-		// read file
-		byteValue, _ := ioutil.ReadAll(jsonFile)
-
-		// Initialize list of aircraft
-		var stats Statistics
-
-		// Unmarshal to aircraft list
-		json.Unmarshal(byteValue, &stats)
-
-		statMetrics(stats)
+	// Print the error if that happens.
+	if err != nil {
+		fmt.Println(err)
 	}
+
+	// defer file close
+	defer jsonFile.Close()
+
+	// read file
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	// Initialize list of aircraft
+	var stats Statistics
+
+	// Unmarshal to aircraft list
+	json.Unmarshal(byteValue, &stats)
+
+	statMetrics(stats)
 
 }
 
@@ -401,8 +397,22 @@ func readFilesTicker(path string) {
 	aircraftTicker := time.NewTicker(5 * time.Second)
 	statsTicker := time.NewTicker(30 * time.Second)
 
-	go readAircraftFile(path, aircraftTicker)
-	go readStatsFile(path, statsTicker)
+	go func() {
+		for {
+			<-aircraftTicker.C
+			readAircraftFile(path)
+		}
+	}()
+
+	go func() {
+		for {
+			<-statsTicker.C
+			readStatsFile(path)
+		}
+	}()
+
+	// go readAircraftFile(path, aircraftTicker)
+	// go readStatsFile(path, statsTicker)
 
 }
 
