@@ -179,6 +179,11 @@ var (
 	)
 )
 
+var opsMetrics struct {
+	AirCraftFileReads func() prometheus.Counter `name:"aircraft_file_reads" help:"Number of reads on the aircraft file"`
+	StatsFileReads    func() prometheus.Counter `name:"stats_file_reads" help:"Number of reads on the stats file"`
+}
+
 var metrics struct {
 	MessagesTotal func(statLabels) prometheus.Gauge `name:"messages_total" help:"Total number of messages received"`
 
@@ -318,6 +323,9 @@ func readAircraftFile(path string) {
 	// Open the file
 	jsonFile, err := os.Open(path + "aircraft.json")
 
+	// Increment the prom read metric
+	opsMetrics.AirCraftFileReads().Inc()
+
 	// Print the error if that happens.
 	if err != nil {
 		fmt.Println(err)
@@ -343,6 +351,9 @@ func readStatsFile(path string) {
 
 	// Open the file
 	jsonFile, err := os.Open(path + "stats.json")
+
+	// Increment the prom read metric
+	opsMetrics.StatsFileReads().Inc()
 
 	// Print the error if that happens.
 	if err != nil {
@@ -419,6 +430,8 @@ func readFilesTicker(path string) {
 func init() {
 	// reg := prometheus.NewRegistry()
 	gotoprom.MustInit(&metrics, "dump1090")
+
+	gotoprom.MustInit(&opsMetrics, "dump1090")
 
 	// Metrics have to be registered to be exposed:
 	prometheus.MustRegister(dump1090AltBaro)
