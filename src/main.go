@@ -293,8 +293,7 @@ func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 }
 
 func relative_direction(angle float64) string {
-	// direction_lut := [16]string{"N", "NE", "NE", "E", "E", "SE", "SE", "S", "S", "SW", "SW", "W", "W", "NW", "NW", "N"}
-	index := int(angle/22.5) + 1
+	index := int(math.Abs(angle)/22.5) + 1
 	return direction_lut[index]
 }
 
