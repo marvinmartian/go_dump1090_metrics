@@ -257,7 +257,7 @@ type requestLabels struct {
 	Hex    string `label:"hex"`
 }
 
-const radius = 6371
+const radius = 6371.0e3
 
 func contains(s []string, str string) bool {
 	for _, v := range s {
@@ -276,8 +276,22 @@ func degrees2radians(degrees float64) float64 {
 }
 
 func relative_angle(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
-	angle := math.Atan2(lat2-lat1, lng2-lng1) * (180 / math.Pi)
-	return angle
+
+	deg := math.Atan((lng2-lng1)/(lat2-lat1)) * (180 / math.Pi)
+
+	if lat2 == lat1 {
+		if lng2 > lng1 {
+			return 90
+		} else {
+			return 270
+		}
+	}
+
+	if lat2 > lat1 {
+		return math.Mod(360+deg, 360)
+	} else {
+		return 180 + deg
+	}
 }
 
 func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
@@ -293,7 +307,8 @@ func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 }
 
 func relative_direction(angle float64) string {
-	index := int(math.Abs(angle)/22.5) + 1
+	index := int(math.Abs(angle) / 22.5)
+	// fmt.Println(index)
 	return direction_lut[index]
 }
 
@@ -326,31 +341,30 @@ func aircraftMetrics(aircraft []Aircraft) {
 
 	for _, s := range aircraft {
 
+		labels := prometheus.Labels{"flight": strings.TrimSpace(s.Flight), "hex": s.Hex}
 		if s.Seen < threshold {
 			aircraft_observed++
-		}
-		if s.SeenPos < threshold {
-			aircraft_with_pos++
-		}
-
-		if contains(s.Mlat, "lat") {
-			aircraft_with_mlat++
-		}
-
-		labels := prometheus.Labels{"flight": strings.TrimSpace(s.Flight), "hex": s.Hex}
-		if s.Latitude != 0 {
-			dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
-			angle := relative_angle(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
-			direction := relative_direction(angle)
-			// fmt.Println(angle)
-			// fmt.Println(direction)
-			aircraft_direction[direction]++
-			dump1090CountByDirection.With(prometheus.Labels{"direction": direction, "time_period": "latest"}).Set(float64(aircraft_direction[direction]))
-			if dist > float64(aircraft_direction_max_range[direction]) {
-				aircraft_direction_max_range[direction] = dist
-				dump1090MaxRangeDirection.With(prometheus.Labels{"direction": direction, "time_period": "latest"}).Set(dist)
+			if s.SeenPos < threshold {
+				aircraft_with_pos++
+				if contains(s.Mlat, "lat") {
+					aircraft_with_mlat++
+				}
+				if s.Latitude != 0 {
+					dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
+					angle := relative_angle(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
+					direction := relative_direction(angle)
+					// fmt.Println(angle)
+					// fmt.Println(direction)
+					aircraft_direction[direction]++
+					dump1090CountByDirection.With(prometheus.Labels{"direction": direction, "time_period": "latest"}).Set(float64(aircraft_direction[direction]))
+					if dist > float64(aircraft_direction_max_range[direction]) {
+						aircraft_direction_max_range[direction] = dist
+						dump1090MaxRangeDirection.With(prometheus.Labels{"direction": direction, "time_period": "latest"}).Set(dist)
+					}
+					dump1090Distance.With(labels).Set(dist)
+				}
 			}
-			dump1090Distance.With(labels).Set(dist)
+
 		}
 
 		// details := FindAircraft(s.Hex)
