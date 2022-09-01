@@ -11,7 +11,7 @@ func TestDistance(t *testing.T) {
 	var lon2 float64 = -115.99
 
 	distance := distance(lat1, lon1, lat2, lon2)
-	if distance != 178.21893191668582 {
+	if distance != 178218.93191668583 {
 		t.Errorf("Distance was incorrect. Expected: 178.21893191668582")
 	}
 }
@@ -23,8 +23,8 @@ func TestRelativeAngle(t *testing.T) {
 	var lon2 float64 = -115.99
 
 	rel_angle := relative_angle(lat1, lon1, lat2, lon2)
-	if rel_angle != 153.434948822922 {
-		t.Errorf("Angle was incorrect. Expected: 153.434948822922")
+	if rel_angle != 296.565051177078 {
+		t.Errorf("Angle was incorrect. Expected: 296.565051177078")
 	}
 }
 
