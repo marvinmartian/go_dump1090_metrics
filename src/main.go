@@ -19,7 +19,7 @@ import (
 )
 
 type AircraftList struct {
-	Messages float64    `json:"messages"`
+	Messages float64    `json:"messages,int"`
 	Aircraft []Aircraft `json:"aircraft"`
 }
 
@@ -168,10 +168,10 @@ var (
 	)
 	dump1090Messages = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "dump1090",
-		Name:      "messages",
+		Name:      "messages_total",
 		Help:      "Number of Messages.",
 	},
-		[]string{"flight", "hex"},
+		[]string{"time_period"},
 	)
 	dump1090Distance = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "dump1090",
@@ -230,7 +230,7 @@ var opsMetrics struct {
 }
 
 var metrics struct {
-	MessagesTotal func(statLabels) prometheus.Gauge `name:"messages_total" help:"Total number of messages received"`
+	// MessagesTotal func(statLabels) prometheus.Gauge `name:"messages_total" help:"Total number of messages received"`
 
 	RecentAircraftObserved func(statLabels) prometheus.Gauge `name:"recent_aircraft_observed" help:"Recent Aircraft observed"`
 
@@ -253,6 +253,20 @@ var metrics struct {
 	CpuBackgroundMs func(statLabels) prometheus.Gauge `name:"stats_cpu_background_milliseconds" help:"background cpu"`
 	CpuDemodMs      func(statLabels) prometheus.Gauge `name:"stats_cpu_demod_milliseconds" help:"Demod ms"`
 	CpuReaderMs     func(statLabels) prometheus.Gauge `name:"stats_cpu_reader_milliseconds" help:"Reader ms"`
+
+	StatsLocalAccepted func(statLabels) prometheus.Gauge `name:"dump1090_stats_local_accepted" help:"Number of valid Mode S messages accepted with N-bit errors corrected"`
+
+	// dump1090_stats_local_accepted{time_period="last1min"} 786
+	// dump1090_stats_local_bad{time_period="last1min"} 3889369
+	// dump1090_stats_local_modeac{time_period="last1min"} 0
+	// dump1090_stats_local_modes{time_period="last1min"} 1652142
+	// dump1090_stats_local_noise_level_dbFS{time_period="last1min"} -20.4
+	// dump1090_stats_local_peak_signal_strength_dbFS{time_period="last1min"} -2.5
+	// dump1090_stats_local_samples_dropped{time_period="last1min"} 0
+	// dump1090_stats_local_samples_processed{time_period="last1min"} 144048128
+	// dump1090_stats_local_signal_strength_dbFS{time_period="last1min"} -7.7
+	// dump1090_stats_local_strong_signals{time_period="last1min"} 6
+	// dump1090_stats_local_unknown_icao{time_period="last1min"} 675782
 }
 
 type statLabels struct {
@@ -319,7 +333,9 @@ func relative_direction(angle float64) string {
 	return direction_lut[index]
 }
 
-func aircraftMetrics(aircraft []Aircraft) {
+func aircraftMetrics(aircraftList AircraftList) {
+
+	aircraft := aircraftList.Aircraft
 
 	dump1090AltBaro.Reset()
 	dump1090Distance.Reset()
@@ -347,6 +363,9 @@ func aircraftMetrics(aircraft []Aircraft) {
 	// fmt.Println(aircraft_direction)
 	// fmt.Println(aircraft_direction_max_range)
 	// fmt.Println(threshold)
+
+	// fmt.Println(float64(int(aircraftList.Messages)))
+	// metrics.MessagesTotal(statLabels{TimePeriod: "latest"}).Set(aircraftList.Messages)
 
 	for _, s := range aircraft {
 
@@ -390,11 +409,13 @@ func aircraftMetrics(aircraft []Aircraft) {
 		dump1090GroundSpeed.With(labels).Set(float64(s.GroundSpeed))
 		dump1090NavHeading.With(labels).Set(float64(s.NavHeading))
 		dump1090Rssi.With(labels).Set(float64(s.RSSi))
-		// dump1090Messages.With(labels).Set(float64(s.Messages))
+
 	}
 
+	metrics.RecentAircraftObserved(statLabels{TimePeriod: "latest"}).Set(float64(aircraft_observed))
 	// fmt.Println(aircraft_direction)
 	// dump1090Observed.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_observed))
+	dump1090Messages.With(prometheus.Labels{"time_period": "latest"}).Set(aircraftList.Messages)
 	dump1090CountWithMlat.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_with_mlat))
 	dump1090CountWithPos.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_with_pos))
 	// fmt.Println(aircraft_observed)
@@ -416,7 +437,12 @@ func statMetrics(stats Statistics) {
 			TimePeriod: key,
 		}
 
-		metrics.MessagesTotal(minuteLabel).Set(value.Messages)
+		if key != "latest" {
+			// metrics.MessagesTotal(minuteLabel).Set(value.Messages)
+			dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(value.Messages)
+			metrics.StatsLocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
+			// dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(float64(value.Messages))
+		}
 
 		metrics.CprAirborne(minuteLabel).Set(value.Cpr.Airborne)
 		metrics.CprFiltered(minuteLabel).Set(value.Cpr.Filtered)
@@ -435,6 +461,7 @@ func statMetrics(stats Statistics) {
 		metrics.CpuBackgroundMs(minuteLabel).Set(value.Cpu.Background)
 		metrics.CpuDemodMs(minuteLabel).Set(value.Cpu.Demod)
 		metrics.CpuReaderMs(minuteLabel).Set(value.Cpu.Reader)
+
 	}
 
 }
@@ -464,7 +491,7 @@ func readAircraftFile(path string) {
 	// Unmarshal to aircraft list
 	json.Unmarshal(byteValue, &aircraft_list)
 
-	aircraftMetrics(aircraft_list.Aircraft)
+	aircraftMetrics(aircraft_list)
 	// fmt.Printf("%+v\n", aircraft_list)
 }
 
