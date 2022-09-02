@@ -257,6 +257,7 @@ var metrics struct {
 	StatsLocalAccepted       func(statLabels) prometheus.Gauge `name:"stats_local_accepted" help:"Number of valid Mode S messages accepted with N-bit errors corrected"`
 	StatsLocalSignalStrength func(statLabels) prometheus.Gauge `name:"stats_local_signal_strength_dbFS" help:"Signal strength dbFS"`
 	StatsLocalStrongSignal   func(statLabels) prometheus.Gauge `name:"stats_local_strong_signals" help:"Number of messages that had a signal power above -3dBFS"`
+	StatsLocalPeakSignal     func(statLabels) prometheus.Gauge `name:"stats_local_peak_signal_strength_dbFS" help:"Peak signal strength dbFS"`
 
 	// dump1090_stats_local_accepted{time_period="last1min"} 786
 	// dump1090_stats_local_bad{time_period="last1min"} 3889369
@@ -445,6 +446,7 @@ func statMetrics(stats Statistics) {
 			metrics.StatsLocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
 			metrics.StatsLocalSignalStrength(minuteLabel).Set(value.Local.SignalStrength)
 			metrics.StatsLocalStrongSignal(minuteLabel).Set(value.Local.StrongSignals)
+			metrics.StatsLocalPeakSignal(minuteLabel).Set(value.Local.PeakSignal)
 			// dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(float64(value.Messages))
 		}
 
