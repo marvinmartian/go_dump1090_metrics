@@ -187,6 +187,13 @@ var (
 	},
 		[]string{"direction", "time_period"},
 	)
+	dump1090MaxRange = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "dump1090",
+		Name:      "recent_aircraft_max_range",
+		Help:      "Maximum range of recently observed aircraft.",
+	},
+		[]string{"time_period"},
+	)
 	dump1090CountByDirection = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "dump1090",
 		Name:      "recent_aircraft_with_direction",
@@ -322,12 +329,14 @@ func aircraftMetrics(aircraft []Aircraft) {
 	dump1090NavHeading.Reset()
 	dump1090Rssi.Reset()
 	dump1090MaxRangeDirection.Reset()
+	dump1090MaxRange.Reset()
 	// dump1090Messages.Reset()
 
 	var threshold float64 = 15
 	var aircraft_observed int = 0
 	var aircraft_with_mlat int = 0
 	var aircraft_with_pos float64 = 0
+	var aircraft_max_range float64 = 0
 
 	aircraft_direction := make(map[string]int)
 	aircraft_direction_max_range := make(map[string]float64)
@@ -360,6 +369,11 @@ func aircraftMetrics(aircraft []Aircraft) {
 					if dist > float64(aircraft_direction_max_range[direction]) {
 						aircraft_direction_max_range[direction] = dist
 						dump1090MaxRangeDirection.With(prometheus.Labels{"direction": direction, "time_period": "latest"}).Set(dist)
+					}
+					if dist > aircraft_max_range {
+						// Set Max Range Metric
+						aircraft_max_range = dist
+						dump1090MaxRange.With(prometheus.Labels{"time_period": "latest"}).Set(dist)
 					}
 					dump1090Distance.With(labels).Set(dist)
 				}
@@ -515,6 +529,9 @@ func readFilesTicker(path string) {
 	aircraftTicker := time.NewTicker(5 * time.Second)
 	statsTicker := time.NewTicker(30 * time.Second)
 
+	readAircraftFile(path)
+	readStatsFile(path)
+
 	go func() {
 		for {
 			<-aircraftTicker.C
@@ -550,6 +567,7 @@ func init() {
 	prometheus.MustRegister(dump1090Messages)
 	prometheus.MustRegister(dump1090Distance)
 	prometheus.MustRegister(dump1090MaxRangeDirection)
+	prometheus.MustRegister(dump1090MaxRange)
 	prometheus.MustRegister(dump1090CountByDirection)
 	prometheus.MustRegister(dump1090CountWithPos)
 	prometheus.MustRegister(dump1090CountWithMlat)
