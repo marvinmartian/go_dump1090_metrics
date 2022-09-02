@@ -230,7 +230,7 @@ var opsMetrics struct {
 }
 
 var metrics struct {
-	// MessagesTotal func(statLabels) prometheus.Gauge `name:"messages_total" help:"Total number of messages received"`
+	MessagesTotal func(statLabels) prometheus.Gauge `name:"stats_messages_total" help:"Total number of Mode-S messages processed"`
 
 	RecentAircraftObserved func(statLabels) prometheus.Gauge `name:"recent_aircraft_observed" help:"Recent Aircraft observed"`
 
@@ -254,22 +254,31 @@ var metrics struct {
 	CpuDemodMs      func(statLabels) prometheus.Gauge `name:"stats_cpu_demod_milliseconds" help:"Demod ms"`
 	CpuReaderMs     func(statLabels) prometheus.Gauge `name:"stats_cpu_reader_milliseconds" help:"Reader ms"`
 
-	StatsLocalAccepted       func(statLabels) prometheus.Gauge `name:"stats_local_accepted" help:"Number of valid Mode S messages accepted with N-bit errors corrected"`
-	StatsLocalSignalStrength func(statLabels) prometheus.Gauge `name:"stats_local_signal_strength_dbFS" help:"Signal strength dbFS"`
-	StatsLocalStrongSignal   func(statLabels) prometheus.Gauge `name:"stats_local_strong_signals" help:"Number of messages that had a signal power above -3dBFS"`
-	StatsLocalPeakSignal     func(statLabels) prometheus.Gauge `name:"stats_local_peak_signal_strength_dbFS" help:"Peak signal strength dbFS"`
+	LocalAccepted         func(statLabels) prometheus.Gauge `name:"stats_local_accepted" help:"Number of valid Mode S messages accepted with N-bit errors corrected"`
+	LocalSignalStrength   func(statLabels) prometheus.Gauge `name:"stats_local_signal_strength_dbFS" help:"Signal strength dbFS"`
+	LocalStrongSignal     func(statLabels) prometheus.Gauge `name:"stats_local_strong_signals" help:"Number of messages that had a signal power above -3dBFS"`
+	LocalPeakSignal       func(statLabels) prometheus.Gauge `name:"stats_local_peak_signal_strength_dbFS" help:"Peak signal strength dbFS"`
+	LocalBad              func(statLabels) prometheus.Gauge `name:"stats_local_bad" help:"Number of Mode S preambles that didn't result in a valid message"`
+	LocalModeAc           func(statLabels) prometheus.Gauge `name:"stats_local_modeac" help:"Mode A/C preambles decoded"`
+	LocalModes            func(statLabels) prometheus.Gauge `name:"stats_local_modes" help:"Number of Mode S preambles received"`
+	LocalNoiseLevel       func(statLabels) prometheus.Gauge `name:"stats_local_noise_level_dbFS" help:"Noise level dbFS"`
+	LocalSamplesDropped   func(statLabels) prometheus.Gauge `name:"stats_local_samples_dropped" help:"Number of samples dropped"`
+	LocalSamplesProcessed func(statLabels) prometheus.Gauge `name:"stats_local_samples_processed" help:"Number of samples processed"`
+	LocalUnknownIcao      func(statLabels) prometheus.Gauge `name:"stats_local_unknown_icao" help:"Number of Mode S preambles containing unrecognized ICAO"`
 
-	// dump1090_stats_local_accepted{time_period="last1min"} 786
-	// dump1090_stats_local_bad{time_period="last1min"} 3889369
-	// dump1090_stats_local_modeac{time_period="last1min"} 0
-	// dump1090_stats_local_modes{time_period="last1min"} 1652142
-	// dump1090_stats_local_noise_level_dbFS{time_period="last1min"} -20.4
-	// dump1090_stats_local_peak_signal_strength_dbFS{time_period="last1min"} -2.5
-	// dump1090_stats_local_samples_dropped{time_period="last1min"} 0
-	// dump1090_stats_local_samples_processed{time_period="last1min"} 144048128
-	// dump1090_stats_local_signal_strength_dbFS{time_period="last1min"} -7.7
-	// dump1090_stats_local_strong_signals{time_period="last1min"} 6
-	// dump1090_stats_local_unknown_icao{time_period="last1min"} 675782
+	// from here
+	// StatsCprGlobalSkipped func(statLabels) prometheus.Gauge `name:"stats_cpr_global_skipped" help:"Global position attempts skipped due to missing data"`
+	// StatsCprGlobalSpeed   func(statLabels) prometheus.Gauge `name:"stats_cpr_global_speed" help:"Global positions rejected due to speed check"`
+	// StatsCprLocalSpeed func(statLabels) prometheus.Gauge `name:"stats_cpr_local_speed" help:"Local positions rejected due to speed check"`
+
+	RemoteAccepted    func(statLabels) prometheus.Gauge `name:"stats_remote_accepted" help:"Number of valid Mode S messages accepted with N-bit errors corrected"`
+	RemoteBad         func(statLabels) prometheus.Gauge `name:"stats_remote_bad" help:"Number of Mode S preambles that didn't result in a valid message"`
+	RemoteModeAc      func(statLabels) prometheus.Gauge `name:"stats_remote_modeac" help:"Number of Mode A/C preambles decoded"`
+	RemoteModes       func(statLabels) prometheus.Gauge `name:"stats_remote_modes" help:"Number of Mode S preambles received"`
+	RemoteUnknownIcao func(statLabels) prometheus.Gauge `name:"stats_remote_unknown_icao" help:"Number of Mode S preambles containing unrecognized ICAO"`
+
+	TracksAll           func(statLabels) prometheus.Gauge `name:"stats_tracks_all" help:"Number of tracks created"`
+	TracksSingleMessage func(statLabels) prometheus.Gauge `name:"stats_tracks_single_message" help:"Number of tracks consisting of only a single message"`
 }
 
 type statLabels struct {
@@ -332,7 +341,6 @@ func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 
 func relative_direction(angle float64) string {
 	index := int(math.Abs(angle) / 22.5)
-	// fmt.Println(index)
 	return direction_lut[index]
 }
 
@@ -421,10 +429,6 @@ func aircraftMetrics(aircraftList AircraftList) {
 	dump1090Messages.With(prometheus.Labels{"time_period": "latest"}).Set(aircraftList.Messages)
 	dump1090CountWithMlat.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_with_mlat))
 	dump1090CountWithPos.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_with_pos))
-	// fmt.Println(aircraft_observed)
-	// fmt.Println(aircraft_with_mlat)
-	// fmt.Println(aircraft_with_pos)
-	// fmt.Println(aircraft_direction_max_range)
 
 }
 
@@ -443,10 +447,31 @@ func statMetrics(stats Statistics) {
 		if key != "latest" {
 			// metrics.MessagesTotal(minuteLabel).Set(value.Messages)
 			dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(value.Messages)
-			metrics.StatsLocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
-			metrics.StatsLocalSignalStrength(minuteLabel).Set(value.Local.SignalStrength)
-			metrics.StatsLocalStrongSignal(minuteLabel).Set(value.Local.StrongSignals)
-			metrics.StatsLocalPeakSignal(minuteLabel).Set(value.Local.PeakSignal)
+			metrics.LocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
+			metrics.LocalSignalStrength(minuteLabel).Set(value.Local.SignalStrength)
+			metrics.LocalStrongSignal(minuteLabel).Set(value.Local.StrongSignals)
+			metrics.LocalPeakSignal(minuteLabel).Set(value.Local.PeakSignal)
+			metrics.LocalBad(minuteLabel).Set(value.Local.Bad)
+			metrics.LocalModeAc(minuteLabel).Set(value.Local.ModeAc)
+			metrics.LocalModes(minuteLabel).Set(value.Local.Modes)
+			metrics.LocalNoiseLevel(minuteLabel).Set(value.Local.Noise)
+			metrics.LocalSamplesDropped(minuteLabel).Set(value.Local.SamplesDropped)
+			metrics.LocalSamplesProcessed(minuteLabel).Set(value.Local.SamplesProcessed)
+			metrics.LocalUnknownIcao(minuteLabel).Set(value.Local.UnknownIcao)
+
+			metrics.CprLocalSpeed(minuteLabel).Set(value.Cpr.LocalSpeed)
+			metrics.CprGlobalSpeed(minuteLabel).Set(value.Cpr.GlobalSpeed)
+
+			metrics.RemoteAccepted(minuteLabel).Set(value.Remote.Accepted[0])
+			metrics.RemoteBad(minuteLabel).Set(value.Remote.Bad)
+			metrics.RemoteModeAc(minuteLabel).Set(value.Remote.ModeAc)
+			metrics.RemoteModes(minuteLabel).Set(value.Remote.Modes)
+			metrics.RemoteUnknownIcao(minuteLabel).Set(value.Remote.UnknownIcao)
+
+			metrics.TracksAll(minuteLabel).Set(value.Track.All)
+			metrics.TracksSingleMessage(minuteLabel).Set(value.Track.SingleMessage)
+
+			metrics.MessagesTotal(minuteLabel).Set(value.Messages)
 			// dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(float64(value.Messages))
 		}
 
@@ -455,6 +480,7 @@ func statMetrics(stats Statistics) {
 		metrics.CprGlobalBad(minuteLabel).Set(value.Cpr.GlobalBad)
 		metrics.CprGlobalOk(minuteLabel).Set(value.Cpr.GlobalOk)
 		metrics.CprGlobalRange(minuteLabel).Set(value.Cpr.GlobalRange)
+		metrics.CprGlobalSkipped(minuteLabel).Set(value.Cpr.GlobalSkipped)
 
 		metrics.CprLocalAircraftRelative(minuteLabel).Set(value.Cpr.LocalAircraftRelative)
 		metrics.CprLocalOk(minuteLabel).Set(value.Cpr.LocalOk)
