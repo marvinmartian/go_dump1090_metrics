@@ -254,7 +254,9 @@ var metrics struct {
 	CpuDemodMs      func(statLabels) prometheus.Gauge `name:"stats_cpu_demod_milliseconds" help:"Demod ms"`
 	CpuReaderMs     func(statLabels) prometheus.Gauge `name:"stats_cpu_reader_milliseconds" help:"Reader ms"`
 
-	StatsLocalAccepted func(statLabels) prometheus.Gauge `name:"dump1090_stats_local_accepted" help:"Number of valid Mode S messages accepted with N-bit errors corrected"`
+	StatsLocalAccepted       func(statLabels) prometheus.Gauge `name:"stats_local_accepted" help:"Number of valid Mode S messages accepted with N-bit errors corrected"`
+	StatsLocalSignalStrength func(statLabels) prometheus.Gauge `name:"stats_local_signal_strength_dbFS" help:"Signal strength dbFS"`
+	StatsLocalStrongSignal   func(statLabels) prometheus.Gauge `name:"stats_local_strong_signals" help:"Number of messages that had a signal power above -3dBFS"`
 
 	// dump1090_stats_local_accepted{time_period="last1min"} 786
 	// dump1090_stats_local_bad{time_period="last1min"} 3889369
@@ -441,6 +443,8 @@ func statMetrics(stats Statistics) {
 			// metrics.MessagesTotal(minuteLabel).Set(value.Messages)
 			dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(value.Messages)
 			metrics.StatsLocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
+			metrics.StatsLocalSignalStrength(minuteLabel).Set(value.Local.SignalStrength)
+			metrics.StatsLocalStrongSignal(minuteLabel).Set(value.Local.StrongSignals)
 			// dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(float64(value.Messages))
 		}
 
