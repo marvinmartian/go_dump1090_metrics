@@ -63,13 +63,13 @@ func contains(s []string, str string) bool {
 	return false
 }
 
-var direction_lut = [16]string{"N", "NE", "NE", "E", "E", "SE", "SE", "S", "S", "SW", "SW", "W", "W", "NW", "NW", "N"}
+var directionLut = [16]string{"N", "NE", "NE", "E", "E", "SE", "SE", "S", "S", "SW", "SW", "W", "W", "NW", "NW", "N"}
 
 func degrees2radians(degrees float64) float64 {
 	return degrees * math.Pi / 180
 }
 
-func relative_angle(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
+func relativeAngle(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 
 	deg := math.Atan((lng2-lng1)/(lat2-lat1)) * (180 / math.Pi)
 
@@ -100,9 +100,9 @@ func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 	return d
 }
 
-func relative_direction(angle float64) string {
+func relativeDirection(angle float64) string {
 	index := int(math.Abs(angle) / 22.5)
-	return direction_lut[index]
+	return directionLut[index]
 }
 
 func aircraftMetrics(aircraftList AircraftList) {
@@ -128,9 +128,9 @@ func aircraftMetrics(aircraftList AircraftList) {
 
 	aircraft_direction := make(map[string]int)
 	aircraft_direction_max_range := make(map[string]float64)
-	for d := range direction_lut {
-		aircraft_direction[direction_lut[d]] = 0
-		aircraft_direction_max_range[direction_lut[d]] = 0
+	for d := range directionLut {
+		aircraft_direction[directionLut[d]] = 0
+		aircraft_direction_max_range[directionLut[d]] = 0
 	}
 	// fmt.Println(aircraft_direction)
 	// fmt.Println(aircraft_direction_max_range)
@@ -151,8 +151,8 @@ func aircraftMetrics(aircraftList AircraftList) {
 				}
 				if s.Latitude != 0 {
 					dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
-					angle := relative_angle(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
-					direction := relative_direction(angle)
+					angle := relativeAngle(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
+					direction := relativeDirection(angle)
 					// fmt.Println(angle)
 					// fmt.Println(direction)
 					aircraft_direction[direction]++

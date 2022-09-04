@@ -22,7 +22,7 @@ func TestRelativeAngle(t *testing.T) {
 	var lat2 float64 = 51.72
 	var lon2 float64 = -115.99
 
-	rel_angle := relative_angle(lat1, lon1, lat2, lon2)
+	rel_angle := relativeAngle(lat1, lon1, lat2, lon2)
 	if rel_angle != 296.565051177078 {
 		t.Errorf("Angle was incorrect. Expected: 296.565051177078")
 	}
@@ -31,7 +31,7 @@ func TestRelativeAngle(t *testing.T) {
 func TestRelativeDirection(t *testing.T) {
 	var angle float64 = 116.4048736325465
 
-	rel_angle := relative_direction(angle)
+	rel_angle := relativeDirection(angle)
 	if rel_angle != "SE" {
 		t.Errorf("Direction was incorrect. Expected: SE")
 	}
