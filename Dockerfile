@@ -18,8 +18,8 @@ FROM golang:1.19-alpine AS builder
 
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-ENV GOARCH=arm
-ENV GOARM=6
+# ENV GOARCH=arm
+# ENV GOARM=6
 
 WORKDIR /app
 
