@@ -3,6 +3,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -63,7 +64,7 @@ func contains(s []string, str string) bool {
 	return false
 }
 
-var directionLut = [16]string{"N", "NE", "NE", "E", "E", "SE", "SE", "S", "S", "SW", "SW", "W", "W", "NW", "NW", "N"}
+var directionLut = [17]string{"N", "NE", "NE", "E", "E", "SE", "SE", "S", "S", "SW", "SW", "W", "W", "NW", "NW", "N"}
 
 func degrees2radians(degrees float64) float64 {
 	return degrees * math.Pi / 180
@@ -101,7 +102,14 @@ func distance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
 }
 
 func relativeDirection(angle float64) string {
+	if angle >= 360 {
+		angle = 0
+	}
 	index := int(math.Abs(angle) / 22.5)
+	// for i := 1; i <= 16; i++ {
+	// 	fmt.Println(i, directionLut[i])
+	// }
+	// fmt.Println(index, directionLut[index])
 	return directionLut[index]
 }
 
@@ -261,86 +269,100 @@ func statMetrics(stats Statistics) {
 
 func readAircraftFile(path string) {
 
-	// Open the file
-	jsonFile, err := os.Open(path + "aircraft.json")
+	var file string = path + "aircraft.json"
+	if _, err := os.Stat(file); errors.Is(err, os.ErrNotExist) {
+		// Do something because it doesn't exist
+	} else {
+		// Open the file
+		jsonFile, err := os.Open(file)
 
-	// Increment the prom read metric
-	opsMetrics.AirCraftFileReads().Inc()
+		// Increment the prom read metric
+		opsMetrics.AirCraftFileReads().Inc()
 
-	// Print the error if that happens.
-	if err != nil {
-		fmt.Println(err)
+		// Print the error if that happens.
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// defer file close
+		defer jsonFile.Close()
+
+		// read file
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		// Initialize list of aircraft
+		var aircraft_list AircraftList
+
+		// Unmarshal to aircraft list
+		json.Unmarshal(byteValue, &aircraft_list)
+
+		aircraftMetrics(aircraft_list)
 	}
-
-	// defer file close
-	defer jsonFile.Close()
-
-	// read file
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	// Initialize list of aircraft
-	var aircraft_list AircraftList
-
-	// Unmarshal to aircraft list
-	json.Unmarshal(byteValue, &aircraft_list)
-
-	aircraftMetrics(aircraft_list)
-	// fmt.Printf("%+v\n", aircraft_list)
 }
 
 func readStatsFile(path string) {
 
-	// Open the file
-	jsonFile, err := os.Open(path + "stats.json")
+	var file string = path + "stats.json"
+	if _, err := os.Stat(file); errors.Is(err, os.ErrNotExist) {
+		// Do something because it doesn't exist
+	} else {
+		// Open the file
+		jsonFile, err := os.Open(file)
 
-	// Increment the prom read metric
-	opsMetrics.StatsFileReads().Inc()
+		// Increment the prom read metric
+		opsMetrics.StatsFileReads().Inc()
 
-	// Print the error if that happens.
-	if err != nil {
-		fmt.Println(err)
+		// Print the error if that happens.
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// defer file close
+		defer jsonFile.Close()
+
+		// read file
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		// Initialize list of aircraft
+		var stats Statistics
+
+		// Unmarshal to aircraft list
+		json.Unmarshal(byteValue, &stats)
+
+		statMetrics(stats)
 	}
-
-	// defer file close
-	defer jsonFile.Close()
-
-	// read file
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	// Initialize list of aircraft
-	var stats Statistics
-
-	// Unmarshal to aircraft list
-	json.Unmarshal(byteValue, &stats)
-
-	statMetrics(stats)
 
 }
 
 func readReceiverInfo(path string) {
 
-	// Open the file
-	jsonFile, err := os.Open(path + "receiver.json")
+	var file string = path + "receiver.json"
+	if _, err := os.Stat(file); errors.Is(err, os.ErrNotExist) {
+		// Do something because it doesn't exist
+	} else {
+		// Open the file
+		jsonFile, err := os.Open(file)
 
-	// Print the error if that happens.
-	if err != nil {
-		fmt.Println(err)
+		// Print the error if that happens.
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// defer file close
+		defer jsonFile.Close()
+
+		// read file
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		// // Initialize list of coordinates
+		var cords Coordinate
+
+		// // Unmarshal to aircraft list
+		json.Unmarshal(byteValue, &cords)
+
+		ReceiverLat = cords.Lat
+		ReceiverLon = cords.Lon
 	}
-
-	// defer file close
-	defer jsonFile.Close()
-
-	// read file
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
-	// // Initialize list of coordinates
-	var cords Coordinate
-
-	// // Unmarshal to aircraft list
-	json.Unmarshal(byteValue, &cords)
-
-	ReceiverLat = cords.Lat
-	ReceiverLon = cords.Lon
 
 }
 

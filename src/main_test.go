@@ -29,10 +29,12 @@ func TestRelativeAngle(t *testing.T) {
 }
 
 func TestRelativeDirection(t *testing.T) {
-	var angle float64 = 116.4048736325465
-
-	rel_angle := relativeDirection(angle)
-	if rel_angle != "SE" {
-		t.Errorf("Direction was incorrect. Expected: SE")
+	var acceptedDirection = []string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
+	for i := 0; i <= 360; i++ {
+		direction := relativeDirection(float64(i))
+		if contains(acceptedDirection, direction) == false {
+			t.Errorf("Direction was incorrect.")
+		}
 	}
+
 }
