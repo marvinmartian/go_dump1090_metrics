@@ -309,6 +309,7 @@ func readAircraftFile(path string) {
 			aircraftMetrics(aircraftList)
 		}
 	} else {
+		opsMetrics.AirCraftFileReads().Inc()
 		aircraftList := new(AircraftList)
 		getJson(aircraft_path, aircraftList)
 		aircraftMetrics(*aircraftList)
@@ -349,6 +350,7 @@ func readStatsFile(path string) {
 			statMetrics(stats)
 		}
 	} else {
+		opsMetrics.StatsFileReads().Inc()
 		stats := new(Statistics)
 		getJson(stats_path, stats)
 		statMetrics(*stats)
