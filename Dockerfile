@@ -15,8 +15,9 @@ COPY src/*.go ./
 
 RUN go build -a -tags netgo -ldflags '-w' -o go_dump1090_exporter 
 
-FROM gcr.io/distroless/static
-# COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+# FROM gcr.io/distroless/static
+FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --chown=0:0 --from=builder /app/go_dump1090_exporter /bin/
 
 EXPOSE 3000
