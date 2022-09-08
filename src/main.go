@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -18,6 +16,8 @@ import (
 	"github.com/cabify/gotoprom"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type AircraftList struct {
@@ -118,7 +118,9 @@ func relativeDirection(angle float64) string {
 		angle = 0
 	}
 	index := int(math.Abs(angle) / 22.5)
-	return directionLut[index]
+
+	direction := directionLut[index]
+	return direction
 }
 
 func aircraftMetrics(aircraftList AircraftList) {
@@ -134,7 +136,6 @@ func aircraftMetrics(aircraftList AircraftList) {
 	dump1090Rssi.Reset()
 	dump1090MaxRangeDirection.Reset()
 	dump1090MaxRange.Reset()
-	// dump1090Messages.Reset()
 
 	var threshold float64 = 15
 	var aircraft_observed int = 0
@@ -148,12 +149,6 @@ func aircraftMetrics(aircraftList AircraftList) {
 		aircraft_direction[directionLut[d]] = 0
 		aircraft_direction_max_range[directionLut[d]] = 0
 	}
-	// fmt.Println(aircraft_direction)
-	// fmt.Println(aircraft_direction_max_range)
-	// fmt.Println(threshold)
-
-	// fmt.Println(float64(int(aircraftList.Messages)))
-	// metrics.MessagesTotal(statLabels{TimePeriod: "latest"}).Set(aircraftList.Messages)
 
 	for _, s := range aircraft {
 
@@ -169,8 +164,13 @@ func aircraftMetrics(aircraftList AircraftList) {
 					dist := distance(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
 					angle := relativeAngle(ReceiverLat, ReceiverLon, s.Latitude, s.Longitude)
 					direction := relativeDirection(angle)
-					// fmt.Println(angle)
-					// fmt.Println(direction)
+					log.Debug().
+						Str("Flight", s.Flight).
+						Float64("Ground Speed", s.GroundSpeed).
+						Float64("Distance", dist).
+						Float64("Angle", angle).
+						Str("Direction", direction).
+						Send()
 					aircraft_direction[direction]++
 					dump1090CountByDirection.With(prometheus.Labels{"direction": direction, "time_period": "latest"}).Set(float64(aircraft_direction[direction]))
 					if dist > float64(aircraft_direction_max_range[direction]) {
@@ -188,9 +188,6 @@ func aircraftMetrics(aircraftList AircraftList) {
 
 		}
 
-		// details := FindAircraft(s.Hex)
-		// fmt.Println(details)
-
 		dump1090AltBaro.With(labels).Set(float64(s.AltoBaro))
 		dump1090AltGeom.With(labels).Set(float64(s.AltoGeom))
 		dump1090BaroRate.With(labels).Set(float64(s.BaroRate))
@@ -201,8 +198,6 @@ func aircraftMetrics(aircraftList AircraftList) {
 	}
 
 	metrics.RecentAircraftObserved(statLabels{TimePeriod: "latest"}).Set(float64(aircraft_observed))
-	// fmt.Println(aircraft_direction)
-	// dump1090Observed.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_observed))
 	dump1090Messages.With(prometheus.Labels{"time_period": "latest"}).Set(aircraftList.Messages)
 	dump1090CountWithMlat.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_with_mlat))
 	dump1090CountWithPos.With(prometheus.Labels{"time_period": "latest"}).Set(float64(aircraft_with_pos))
@@ -213,7 +208,9 @@ func statMetrics(stats Statistics) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("Recovering from panic in statMetrics error is: %v \n", r)
+			log.Error().
+				Str("func", "statMetrics").
+				Msgf("Recovered from panic. Error %s", r)
 		}
 	}()
 
@@ -228,9 +225,7 @@ func statMetrics(stats Statistics) {
 		}
 
 		if key != "latest" {
-			// metrics.MessagesTotal(minuteLabel).Set(value.Messages)
 			dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(value.Messages)
-			// if value.Local.Accepted
 			if len(value.Local.Accepted) > 0 {
 				metrics.LocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
 			}
@@ -258,7 +253,6 @@ func statMetrics(stats Statistics) {
 			metrics.TracksSingleMessage(minuteLabel).Set(value.Track.SingleMessage)
 
 			metrics.MessagesTotal(minuteLabel).Set(value.Messages)
-			// dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(float64(value.Messages))
 		}
 
 		metrics.CprAirborne(minuteLabel).Set(value.Cpr.Airborne)
@@ -300,7 +294,7 @@ func readAircraftFile(path string) {
 
 			// Print the error if that happens.
 			if err != nil {
-				fmt.Println(err)
+				log.Error().Err(err).Msg("Error opening aircraft.json")
 			}
 
 			// defer file close
@@ -341,7 +335,7 @@ func readStatsFile(path string) {
 
 			// Print the error if that happens.
 			if err != nil {
-				fmt.Println(err)
+				log.Error().Err(err).Msg("Error opening stats.json")
 			}
 
 			// defer file close
@@ -372,7 +366,6 @@ func readReceiverInfo(path string) {
 	var receiver_path string = path + "receiver.json"
 	_, err := url.ParseRequestURI(receiver_path)
 	if err != nil {
-		// fmt.Println("it's a filepath")
 		if _, err := os.Stat(receiver_path); errors.Is(err, os.ErrNotExist) {
 			// Do something because it doesn't exist
 		} else {
@@ -381,7 +374,7 @@ func readReceiverInfo(path string) {
 
 			// Print the error if that happens.
 			if err != nil {
-				fmt.Println(err)
+				log.Error().Err(err).Msg("Error opening receiver.json")
 			}
 
 			// defer file close
@@ -460,9 +453,17 @@ func main() {
 
 	path := flag.String("path", "/run/dump1090-fa/", "Path to json files. Default /run/dump1090-fa/")
 	port := flag.String("port", "3000", "Port to expose metrics")
+	debug := flag.Bool("debug", false, "sets log level to debug")
 	flag.Parse()
-	fmt.Println("Path to json files:", *path)
-	fmt.Println("Listen Port:", *port)
+
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if *debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
+	log.Info().Msg("Path to json files:" + *path)
+	log.Info().Msg("Listen Port:" + *port)
 
 	readReceiverInfo(*path)
 
@@ -471,6 +472,8 @@ func main() {
 	// go flightInit()
 
 	http.Handle("/metrics", promhttp.Handler())
-	log.Fatal(http.ListenAndServe(":"+*port, nil))
+	if err := http.ListenAndServe(":"+*port, nil); err != nil {
+		log.Fatal().Err(err).Msg("Startup failed")
+	}
 
 }
