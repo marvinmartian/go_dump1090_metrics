@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -35,6 +36,28 @@ func TestRelativeDirection(t *testing.T) {
 		if contains(acceptedDirection, direction) == false {
 			t.Errorf("Direction was incorrect.")
 		}
+	}
+
+}
+
+func TestContains(t *testing.T) {
+	var tests = []struct {
+		haystack []string
+		needle   string
+		want     bool
+	}{
+		{[]string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}, "SE", true},
+		{[]string{"foo", "bar"}, "foobar", false},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%s,%s", tt.haystack, tt.needle)
+		t.Run(testname, func(t *testing.T) {
+			ans := contains(tt.haystack, tt.needle)
+			if ans != tt.want {
+				t.Errorf("got %t, want %t", ans, tt.want)
+			}
+		})
 	}
 
 }
