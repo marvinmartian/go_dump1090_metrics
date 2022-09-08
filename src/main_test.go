@@ -40,6 +40,28 @@ func TestRelativeDirection(t *testing.T) {
 
 }
 
+func TestDegrees2Radians(t *testing.T) {
+
+	var tests = []struct {
+		degrees float64
+		want    float64
+	}{
+		{234.2376, 4.08821735196947},
+		{186.3456, 3.2523442666043456},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("%f", tt.degrees)
+		t.Run(testname, func(t *testing.T) {
+			ans := degrees2radians(tt.degrees)
+			if ans != tt.want {
+				t.Errorf("got %f, want %f", ans, tt.want)
+			}
+		})
+	}
+
+}
+
 func TestContains(t *testing.T) {
 	var tests = []struct {
 		haystack []string
