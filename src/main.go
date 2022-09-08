@@ -211,6 +211,12 @@ func aircraftMetrics(aircraftList AircraftList) {
 
 func statMetrics(stats Statistics) {
 
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovering from panic in statMetrics error is: %v \n", r)
+		}
+	}()
+
 	m := make(map[string]SingleStat)
 	// m["last5minute"] = stats.Last_5
 	m["last1min"] = stats.Last_1
@@ -224,7 +230,10 @@ func statMetrics(stats Statistics) {
 		if key != "latest" {
 			// metrics.MessagesTotal(minuteLabel).Set(value.Messages)
 			dump1090Messages.With(prometheus.Labels{"time_period": key}).Set(value.Messages)
-			metrics.LocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
+			// if value.Local.Accepted
+			if len(value.Local.Accepted) > 0 {
+				metrics.LocalAccepted(minuteLabel).Set(value.Local.Accepted[0])
+			}
 			metrics.LocalSignalStrength(minuteLabel).Set(value.Local.SignalStrength)
 			metrics.LocalStrongSignal(minuteLabel).Set(value.Local.StrongSignals)
 			metrics.LocalPeakSignal(minuteLabel).Set(value.Local.PeakSignal)
