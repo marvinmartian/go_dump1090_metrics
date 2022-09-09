@@ -243,7 +243,10 @@ func statMetrics(stats Statistics) {
 			metrics.CprLocalSpeed(minuteLabel).Set(value.Cpr.LocalSpeed)
 			metrics.CprGlobalSpeed(minuteLabel).Set(value.Cpr.GlobalSpeed)
 
-			metrics.RemoteAccepted(minuteLabel).Set(value.Remote.Accepted[0])
+			if len(value.Remote.Accepted) > 0 {
+				metrics.RemoteAccepted(minuteLabel).Set(value.Remote.Accepted[0])
+			}
+
 			metrics.RemoteBad(minuteLabel).Set(value.Remote.Bad)
 			metrics.RemoteModeAc(minuteLabel).Set(value.Remote.ModeAc)
 			metrics.RemoteModes(minuteLabel).Set(value.Remote.Modes)
