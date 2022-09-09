@@ -19,7 +19,7 @@ vars:
 	
 
 test:
-	go test src/*.go
+	go test -cover src/*.go
 
 arm:
 	CGO_ENABLED=${CGO_ENABLED} GOOS=${GOOS} GOARCH=${GOARCH} go build -a -tags netgo -ldflags '-w' -o ${NAME} src/metrics.go src/stats.go src/main.go
