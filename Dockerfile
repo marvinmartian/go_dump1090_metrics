@@ -11,7 +11,7 @@ COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 
-COPY src/*.go ./
+COPY *.go ./
 
 RUN go build -a -tags netgo -ldflags '-w' -o go_dump1090_exporter 
 
